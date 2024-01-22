@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <title>Canvas Text Editor</title>
+</head>
+<body>
+
+    
+  
+<div class="fontstyle mt-3">
+    <div class="mt-4 " id="buttons">
+    
+        
+        <button onclick="undo()" id="undo" ><img src="https://ik.imagekit.io/9g0jq9wkj/flat-color-icons_undo.svg?updatedAt=1703841972933" alt="" srcset=""  width="40rem"></button>
+       
+        
+        <button onclick="redo()" id="redo"><img src="https://ik.imagekit.io/9g0jq9wkj/flat-color-icons_redo.svg?updatedAt=1703841765255" width="40rem"></button>
+    
+      
+    </div>
+    <label id="fontlabel"for="fontDropdown">Select Font:</label>
+    <br>
+    <select id="fontDropdown" onchange="changeFont()">
+        <option value="Arial" style="font-family: Arial, Helvetica, sans-serif;">Arial</option>
+        <option value="Times New Roman" style="font-family: 'Times New Roman', Times, serif;">Times New Roman</option>
+        <option value="Courier New" style="font-family: 'Courier New', Courier, monospace;">Courier New</option>
+     
+    </select>
+    <div class="fontsize">
+        <label for="fontSizeDropdown" id="fontlabel">Select Font Size:</label>
+        <br>
+        <select id="fontSizeDropdown" onchange="changeFontSize()">
+            <option value="14">14px</option>
+            <option value="18">18px</option>
+            <option value="24">24px</option>
+            
+        </select> 
+    </div>
+   <div>
+    <label for="fontSizeDropdown" id="fontlabel">Select Colour:</label>
+    <div class="color-buttons">
+       
+        <button class="color-button" style="background-color: #ff0000" onclick="changeFontColor('#ff0000')"></button>
+        <button class="color-button" style="background-color: #00ff00" onclick="changeFontColor('#00ff00')"></button>
+        <button class="color-button" style="background-color: #0000ff" onclick="changeFontColor('#0000ff')"></button>
+        <button class="color-button" style="background-color: #ffff00" onclick="changeFontColor('#ffff00')"></button>
+        <button class="color-button" style="background-color: #ff00ff" onclick="changeFontColor('#ff00ff')"></button>
+    </div>
+    
+</div>
+</div> 
+<!-- <div>
+    <label for="fontSizeDropdown">Select Font Size:</label>
+    <select id="fontSizeDropdown" onchange="changeFontSize()">
+        <option value="14">14px</option>
+        <option value="18">18px</option>
+        <option value="24">24px</option>
+        
+    </select>
+</div>
+
+    <div class="color-buttons">
+        <button class="color-button" style="background-color: #ff0000" onclick="changeFontColor('#ff0000')"></button>
+        <button class="color-button" style="background-color: #00ff00" onclick="changeFontColor('#00ff00')"></button>
+        <button class="color-button" style="background-color: #0000ff" onclick="changeFontColor('#0000ff')"></button>
+        <button class="color-button" style="background-color: #ffff00" onclick="changeFontColor('#ffff00')"></button>
+        <button class="color-button" style="background-color: #ff00ff" onclick="changeFontColor('#ff00ff')"></button>
+    </div> -->
+    
+    <canvas id="myCanvas" width="1000" height="570"></canvas>
+    
+
+    <script>
+        const canvas = document.getElementById('myCanvas');
+        const ctx = canvas.getContext('2d');
+        let textArray = [];
+        let history = [];
+        let redoHistory = [];
+        let selectedWordIndex = -1;
+        let isDragging = false;
+        let dragStartX, dragStartY;
+        let selectedFont = 'Arial';
+        let selectedFontSize = '14';
+
+        canvas.addEventListener('mousedown', handleMouseDown);
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('mouseup', handleMouseUp);
+
+        function handleMouseDown(e) {
+            const clickX = e.clientX - canvas.getBoundingClientRect().left;
+            const clickY = e.clientY - canvas.getBoundingClientRect().top;
+
+            
+            const clickedWordIndex = textArray.findIndex(({ text, xPos, yPos }) => {
+                const textWidth = ctx.measureText(text).width;
+                const textHeight = parseInt(ctx.font);
+                return (
+                    clickX >= xPos &&
+                    clickX <= xPos + textWidth &&
+                    clickY >= yPos - textHeight &&
+                    clickY <= yPos
+                );
+            });
+
+            
+            selectedWordIndex = clickedWordIndex;
+
+            
+            if (selectedWordIndex !== -1) {
+                isDragging = true;
+                dragStartX = clickX;
+                dragStartY = clickY;
+            }
+
+            
+            if (selectedWordIndex === -1) {
+                const text = prompt('Enter text:');
+                if (text) {
+                    const xPos = clickX;
+                    const yPos = clickY;
+                    const fontColor = '#000000'; 
+                    textArray.push({ text, xPos, yPos, font: `${selectedFontSize}px ${selectedFont}`, fontColor });
+                    addToHistory();
+                    drawText();
+                }
+            }
+        }
+
+        function handleKeyDown(e) {
+            if (e.key === 'Backspace' && selectedWordIndex !== -1) {
+                const selectedWord = textArray[selectedWordIndex];
+                if (selectedWord.text.length > 0) {
+                    selectedWord.text = selectedWord.text.substring(0, selectedWord.text.length - 1);
+                    addToHistory();
+                } else {
+                    textArray.splice(selectedWordIndex, 1);
+                    selectedWordIndex = -1;
+                    addToHistory();
+                }
+                drawText();
+            }
+        }
+
+        function handleMouseMove(e) {
+            if (isDragging && selectedWordIndex !== -1) {
+                const newX = e.clientX - canvas.getBoundingClientRect().left;
+                const newY = e.clientY - canvas.getBoundingClientRect().top;
+
+                const deltaX = newX - dragStartX;
+                const deltaY = newY - dragStartY;
+
+                const selectedWord = textArray[selectedWordIndex];
+                selectedWord.xPos += deltaX;
+                selectedWord.yPos += deltaY;
+
+                addToHistory();
+                drawText();
+
+                dragStartX = newX;
+                dragStartY = newY;
+            }
+        }
+
+        function handleMouseUp() {
+            isDragging = false;
+        }
+
+        function changeFont() {
+            const newFont = document.getElementById('fontDropdown').value;
+            if (selectedWordIndex !== -1) {
+                const selectedWord = textArray[selectedWordIndex];
+                selectedWord.font = `${selectedFontSize}px ${newFont}`;
+                addToHistory();
+                drawText();
+            }
+        }
+
+        function changeFontSize() {
+            selectedFontSize = document.getElementById('fontSizeDropdown').value;
+            if (selectedWordIndex !== -1) {
+                const selectedWord = textArray[selectedWordIndex];
+                selectedWord.font = `${selectedFontSize}px ${selectedFont}`;
+                addToHistory();
+                drawText();
+            }
+        }
+
+        function changeFontColor(color) {
+            if (selectedWordIndex !== -1) {
+                const selectedWord = textArray[selectedWordIndex];
+                selectedWord.fontColor = color;
+                addToHistory();
+                drawText();
+            }
+        }
+
+        function drawText() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            textArray.forEach(({ text, xPos, yPos, font, fontColor }) => {
+                ctx.font = font;
+                ctx.fillStyle = fontColor;
+                ctx.fillText(text, xPos, yPos);
+            });
+        }
+
+        function addToHistory() {
+            const snapshot = JSON.stringify(textArray);
+            history.push(snapshot);
+            redoHistory = []; 
+        }
+
+        function undo() {
+            if (history.length > 1) {
+                redoHistory.push(history.pop()); 
+                const previousState = JSON.parse(history[history.length - 1]);
+                textArray = previousState;
+                drawText();
+            }
+        }
+
+        function redo() {
+            if (redoHistory.length > 0) {
+                history.push(redoHistory.pop()); 
+                const nextState = JSON.parse(history[history.length - 1]);
+                textArray = nextState;
+                drawText();
+            }
+        }
+    </script>
+</body>
+</html>
